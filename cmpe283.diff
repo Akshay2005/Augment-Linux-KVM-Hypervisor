@@ -1,0 +1,107 @@
+diff --git a/arch/x86/kvm/x86.c b/arch/x86/kvm/x86.c
+old mode 100644
+new mode 100755
+index 699f872..e160133
+--- a/arch/x86/kvm/x86.c
++++ b/arch/x86/kvm/x86.c
+@@ -94,6 +94,8 @@ static u64 __read_mostly efer_reserved_bits = ~((u64)EFER_SCE);
+ #define KVM_X2APIC_API_VALID_FLAGS (KVM_X2APIC_API_USE_32BIT_IDS | \
+                                     KVM_X2APIC_API_DISABLE_BROADCAST_QUIRK)
+ 
++static unsigned long _counter=0;
++
+ static void update_cr8_intercept(struct kvm_vcpu *vcpu);
+ static void process_nmi(struct kvm_vcpu *vcpu);
+ static void enter_smm(struct kvm_vcpu *vcpu);
+@@ -5983,12 +5985,83 @@ int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
+ 		a3 &= 0xFFFFFFFF;
+ 	}
+ 
++
++if (nr == 0x0F3D){
++		printk(KERN_INFO "GETCTR  called\n");
++		
++		kvm_register_write(vcpu, VCPU_REGS_RAX, (u32)_counter);
++		ret = _counter;
++		printk(KERN_INFO "before counter = 0x%lx\n", _counter);
++		_counter += 1;
++		printk(KERN_INFO "after counter = 0x%lx\n", _counter);
++			
++}
++else{
++
+ 	if (kvm_x86_ops->get_cpl(vcpu) != 0) {
+ 		ret = -KVM_EPERM;
+ 		goto out;
+ 	}
+ 
+ 	switch (nr) {
++	case 0x0F3C:
++		printk(KERN_INFO "NEWCPUID2()  called\n");
++		printk(KERN_INFO "nr = 0x%lx\n",nr);
++		printk(KERN_INFO "a0 = 0x%lx\n",a0);
++		printk(KERN_INFO "a1 = 0x%lx\n",a1);
++		printk(KERN_INFO "a2 = 0x%lx\n",a2);
++		
++		printk(KERN_INFO "Calling kvm_cpuid()\n");
++		kvm_cpuid(vcpu, (u32*)&nr, (u32*)&a0, (u32*)&a1, (u32*)&a2);
++		kvm_register_write(vcpu, VCPU_REGS_RBX, (u32)a0);
++		kvm_register_write(vcpu, VCPU_REGS_RCX, (u32)a1);
++		kvm_register_write(vcpu, VCPU_REGS_RDX, (u32)a2);
++
++		printk(KERN_INFO "__________________________Post call\n");
++		printk(KERN_INFO "nr = 0x%lx\n",nr);
++		printk(KERN_INFO "a1 = 0x%lx\n",a1);
++		printk(KERN_INFO "a2 = 0x%lx\n",a2);
++		printk(KERN_INFO "a3 = 0x%lx\n",a3);
++		
++		nr = nr >> 32;
++		printk(KERN_INFO "nr = 0x%lx\n",nr);
++
++		if(nr == 0xA0000000)
++		{
++				kvm_register_write(vcpu, VCPU_REGS_RAX, 0x0000000045504d43);
++				kvm_register_write(vcpu, VCPU_REGS_RBX, 0x0000000080333832);
++				printk(KERN_INFO "__________________________Post call2\n");
++				printk(KERN_INFO "nr = 0x%lx\n",nr);
++				printk(KERN_INFO "a1 = 0x%lx\n",a1);
++				printk(KERN_INFO "a2 = 0x%lx\n",a2);
++				printk(KERN_INFO "a3 = 0x%lx\n",a3);
++			
++		}
++
++		ret = nr;
++		break;
++	case 0x0F3B:
++		printk(KERN_INFO "NEWCPUID()  called\n");
++		printk(KERN_INFO "nr = 0x%lx\n",nr);
++		nr = nr >> 32;
++		printk(KERN_INFO "fn = 0x%lx\n",nr);
++		printk(KERN_INFO "a0 = 0x%lx\n",a0);
++		printk(KERN_INFO "a1 = 0x%lx\n",a1);
++		printk(KERN_INFO "a2 = 0x%lx\n",a2);
++		printk(KERN_INFO "Calling kvm_cpuid()\n");
++		kvm_cpuid(vcpu, (u32*)&nr, (u32*)&a0, (u32*)&a1, (u32*)&a2);
++		kvm_register_write(vcpu, VCPU_REGS_RBX, (u32)a0);
++		kvm_register_write(vcpu, VCPU_REGS_RCX, (u32)a1);
++		kvm_register_write(vcpu, VCPU_REGS_RDX, (u32)a2);
++
++		printk(KERN_INFO "__________________________Post call\n");
++		printk(KERN_INFO "nr = 0x%lx\n",nr);
++		printk(KERN_INFO "a1 = 0x%lx\n",a1);
++		printk(KERN_INFO "a2 = 0x%lx\n",a2);
++		printk(KERN_INFO "a3 = 0x%lx\n",a3);
++		
++		ret = nr;
++		break;
+ 	case KVM_HC_VAPIC_POLL_IRQ:
+ 		ret = 0;
+ 		break;
+@@ -6000,6 +6073,7 @@ int kvm_emulate_hypercall(struct kvm_vcpu *vcpu)
+ 		ret = -KVM_ENOSYS;
+ 		break;
+ 	}
++}
+ out:
+ 	if (!op_64_bit)
+ 		ret = (u32)ret;
